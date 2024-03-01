@@ -1,0 +1,44 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+def midpoint_displacement(x1, y1, x2, y2, roughness, iterations):
+    """
+    Generate points along a fractal coastline using midpoint displacement algorithm.
+    """
+    points = [(x1, y1), (x2, y2)]
+    for _ in range(iterations):
+        new_points = []
+        for i in range(len(points) - 1):
+            x_mid = (points[i][0] + points[i + 1][0]) / 2
+            y_mid = (points[i][1] + points[i + 1][1]) / 2
+            displacement = (np.random.random() - 0.5) * roughness * (points[i + 1][0] - points[i][0])
+            new_points.append((points[i][0], points[i][1]))
+            new_points.append((x_mid, y_mid + displacement))
+        new_points.append((points[-1][0], points[-1][1]))
+        points = new_points
+    return points
+
+# Define parameters
+S_A = 6  # Distance of ship A from shore
+S_B = 18  # Distance of ship B from shore
+xstar = 30  # Distance of ship A to B
+shore_depth = -5
+horizontal_shore_length = np.sqrt(xstar**2 - (S_B - S_A)**2)  # Shore length
+num_points = 10000
+roughness = 3.0
+iterations = 6
+
+# Generate coastline points
+coastline_points = midpoint_displacement(0, S_A, horizontal_shore_length, S_B, roughness, iterations)
+x_coastline, y_coastline = zip(*coastline_points)
+
+
+# Plotting
+plt.figure(figsize=(10, 6))
+plt.plot(x_coastline, y_coastline, 'k-', label='Shoreline')
+plt.xlabel('Distance (along shoreline)')
+plt.ylabel('Distance (from shoreline)')
+plt.title('Fractal Coastline')
+plt.grid(True)
+plt.legend()
+plt.show()
