@@ -1,0 +1,84 @@
+#Using a random uniform distribution to generate the shore
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.interpolate import splprep, splev
+
+# variables
+S_A = 6  # Distance of ship A from shore
+S_B = 18  # Distance of ship B from shore
+xstar = 2*np.sqrt(61)  # Distance of ship A to B
+shore_depth = -5
+horizontal_shore_length = np.sqrt(xstar**2 - (S_B - S_A)**2)  # Shore length
+
+# Generate random points to represent the shore
+num_points = 10 # change number of points that are representing the shore, values >>>> 10 make the shore more complex
+x_shore = np.linspace(0, horizontal_shore_length, num_points)
+y_shore = np.random.uniform(0, shore_depth, num_points)  # Random heights for the shore points always -ve
+
+
+# Fit a spline curve to the random points
+tck, _ = splprep([x_shore, y_shore], s=0)
+x_spline, y_spline = splev(np.linspace(0, 1, 1000000), tck) # Changing the number at the end of np.linspace changes the number of coordinates that are checked
+
+# Define A and B points
+pointA = (0, S_A)  # A is 6 units away from the shore
+horizontal_shore_length = np.sqrt(xstar**2 - (S_B - S_A)**2)  # Shore length
+pointB = (horizontal_shore_length, S_B)  # B is 18 units away from the shore
+
+def objective_function(pointC_x, pointC_y):
+    """
+    Objective function to minimize the total distance traveled.
+    """
+    pointC = (pointC_x, np.interp(pointC_x, x_spline, y_spline))
+    distance_AC = distance_between_points(pointA, pointC)
+    distance_CB = distance_between_points(pointC, pointB)
+    return distance_AC + distance_CB
+
+def distance_between_points(point1, point2):
+    """
+    Calculate Euclidean distance between two points.
+    """
+    return np.sqrt((point2[0] - point1[0])**2 + (point2[1] - point1[1])**2)
+
+# Store the results of objective function evaluations
+objective_values = []
+min_objective_value = float('inf')
+min_pointC = None
+
+# Calculate objective function values for each spline point
+for i in range(len(x_spline)):
+    objective_value = objective_function(x_spline[i], y_spline[i])
+    objective_values.append(objective_value)
+
+    # Check if this point gives a new minimum objective value
+    if objective_value < min_objective_value:
+        min_objective_value = objective_value
+        min_pointC = (x_spline[i], y_spline[i])
+
+print(range(len(x_spline)))
+# Print the smallest value obtained
+print("Smallest value from objective function:", min_objective_value)
+print("Point C corresponding to the smallest value:", min_pointC)
+
+# Define the point C
+pointC = min_pointC  # Using the previously calculated min_pointC
+
+# Plotting
+plt.figure(figsize=(10, 6))
+plt.plot(x_spline, y_spline, 'k-', label='Shoreline')
+plt.plot([pointA[0], pointC[0]], [pointA[1], pointC[1]], 'r--', label='Ship A to C')
+plt.plot([pointC[0], pointB[0]], [pointC[1], pointB[1]], 'b--', label='Ship C to B')
+plt.plot(pointA[0], pointA[1], 'ro', label='Ship A')
+plt.plot(pointB[0], pointB[1], 'bo', label='Ship B')
+plt.plot(pointC[0], pointC[1], 'go', label='Ship C')
+plt.xlabel('Distance (along shoreline)')
+plt.ylabel('Distance (from shoreline)')
+plt.title('Ship Positions and Shoreline')
+plt.legend()
+plt.grid(True)
+
+# Set x-axis and y-axis limits to fit only the shoreline
+
+plt.xlim(min(x_spline), max(x_spline))
+
+plt.show()
