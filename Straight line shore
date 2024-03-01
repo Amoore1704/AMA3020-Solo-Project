@@ -1,0 +1,62 @@
+#Solving the straightline shore
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+
+xstar = 2 * np.sqrt(61)  # Distance of ship A to B
+
+# S_B >= S_A
+S_A = 6  # Distance of ship A from shore
+S_B = 18  # Distance of ship B from shore
+x = np.sqrt(xstar**2 - (S_B - S_A)**2)  # Shore length
+
+# Calculate y
+x1 = (-2 * x * S_A**2 + np.sqrt(4 * x**2 * S_A**4 + 4 * (S_B**2 - S_A**2) * x**2 * S_A**2)) / (2 * (S_B**2 - S_A**2))  # Should be +/-
+x2 = (-2 * x * S_A**2 - np.sqrt(4 * x**2 * S_A**4 + 4 * (S_B**2 - S_A**2) * x**2 * S_A**2)) / (2 * (S_B**2 - S_A**2))  # Should be +/-
+x_values = [y for y in [x1, x2] if y >= 0]
+
+# Point C calculation
+pointC = (x_values[0], 0)
+
+def distance_between_points(point1, point2):
+    """
+    Calculates the distance between two points in 2D space.
+    """
+    x1, y1 = point1
+    x2, y2 = point2
+    return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+
+def total_distance_traveled(pointA, pointC, pointB):
+    """
+    Calculates the total distance traveled from point A to point B via point C.
+    """
+    distance_AC = distance_between_points(pointA, pointC)
+    distance_CB = distance_between_points(pointC, pointB)
+    return distance_AC + distance_CB
+
+# Example usage:
+pointA = (0, S_A)
+pointB = (x, S_B)
+total_distance = total_distance_traveled(pointA, pointC, pointB)
+print("Total distance traveled:", total_distance)
+
+# Display the legend with the updated line
+plt.legend()
+
+
+# Plotting
+z =[0,1,2,3,4,5,6,7,8,9,10]
+t=np.zeros(11)
+plt.plot(z, t,'k')
+plt.plot([pointA[0], pointC[0]], [pointA[1], pointC[1]], label='A to C')
+plt.plot([pointC[0], pointB[0]], [pointC[1], pointB[1]], label='C to B')
+plt.scatter(*zip(pointA, pointC, pointB), color='red')
+plt.text(pointA[0], pointA[1], 'A', fontsize=12, ha='right')
+plt.text(pointC[0], pointC[1], 'C', fontsize=12, ha='right')
+plt.text(pointB[0], pointB[1], 'B', fontsize=12, ha='right')
+plt.xlabel('X-axis')
+plt.ylabel('Y-axis')
+plt.title('Ship Travel Path')
+plt.legend()
+plt.grid()
+plt.show()
