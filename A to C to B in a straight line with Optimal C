@@ -1,0 +1,198 @@
+# Plots the optimal C
+import numpy as np
+import matplotlib.pyplot as plt
+
+def midpoint_displacement(x1, y1, x2, y2, roughness, iterations):
+    """
+    Generate points along a fractal coastline using midpoint displacement algorithm.
+    """
+    points = [(x1, y1), (x2, y2)]
+    for _ in range(iterations):
+        new_points = []
+        for i in range(len(points) - 1):
+            x_mid = (points[i][0] + points[i + 1][0]) / 2
+            y_mid = (points[i][1] + points[i + 1][1]) / 2
+            displacement = (np.random.random() - 0.5) * roughness * (points[i + 1][0] - points[i][0])
+            new_points.append((points[i][0], points[i][1]))
+            new_points.append((x_mid, y_mid + displacement))
+        new_points.append((points[-1][0], points[-1][1]))
+        points = new_points
+    return points
+
+# variables
+S_A = 6  # Distance of ship A from shore
+S_B = 18  # Distance of ship B from shore
+xstar = 30  # Distance of ship A to B
+shore_depth = -5
+horizontal_shore_length = np.sqrt(xstar**2 - (S_B - S_A)**2)  # Shore length
+
+# Define parameters for fractal coastline generation
+roughness = 2.0
+iterations =  6 # Number of points on the shore
+
+# Generate coastline points
+coastline_points = midpoint_displacement(0, 0, horizontal_shore_length, 0, roughness, iterations)
+x_coastline, y_coastline = zip(*coastline_points)
+
+# Define A and B points
+pointA = (0, S_A)  # A is 6 units away from the shore
+pointB = (horizontal_shore_length, S_B)  # B is 18 units away from the shore
+
+def intersects_line_segment(x1, y1, x2, y2, x3, y3, x4, y4):
+    """
+    Check if the line segment (x1, y1)-(x2, y2) intersects with (x3, y3)-(x4, y4).
+    """
+    def orientation(x1, y1, x2, y2, x3, y3):
+        """
+        Calculate orientation of ordered triplet (x1, y1), (x2, y2), (x3, y3)
+        """
+        val = (y2 - y1) * (x3 - x2) - (x2 - x1) * (y3 - y2)
+        if val == 0:
+            return 0  # colinear
+        elif val > 0:
+            return 1  # clockwise orientation
+        else:
+            return 2  # counterclockwise orientation
+
+    def on_segment(x1, y1, x2, y2, x3, y3):
+        """
+        Given three colinear points (x1, y1), (x2, y2), (x3, y3), the function checks if point (x3, y3) lies on line segment (x1, y1)-(x2, y2).
+        """
+        if min(x1, x2) <= x3 <= max(x1, x2) and min(y1, y2) <= y3 <= max(y1, y2):
+            return True
+        return False
+
+    o1 = orientation(x1, y1, x2, y2, x3, y3)
+    o2 = orientation(x1, y1, x2, y2, x4, y4)
+    o3 = orientation(x3, y3, x4, y4, x1, y1)
+    o4 = orientation(x3, y3, x4, y4, x2, y2)
+
+    # General case
+    if o1 != o2 and o3 != o4:
+        return True
+
+    # Special Cases
+    if o1 == 0 and on_segment(x1, y1, x2, y2, x3, y3):
+        return True
+
+    if o2 == 0 and on_segment(x1, y1, x2, y2, x4, y4):
+        return True
+
+    if o3 == 0 and on_segment(x3, y3, x4, y4, x1, y1):
+        return True
+
+    if o4 == 0 and on_segment(x3, y3, x4, y4, x2, y2):
+        return True
+
+    return False
+
+def objective_function(pointC_x, pointC_y):
+    """
+    Objective function to minimize the total distance traveled.
+    """
+    distance_AC = np.sqrt((pointA[0] - pointC_x)**2 + (pointA[1] - pointC_y)**2)
+    distance_CB = np.sqrt((pointC_x - pointB[0])**2 + (pointC_y - pointB[1])**2)
+
+    # Check if the line segment AC intersects with the coastline except at point C
+    for i in range(len(coastline_points) - 1):
+        x1, y1 = coastline_points[i]
+        x2, y2 = coastline_points[i + 1]
+        if not (x1 == pointC_x and y1 == pointC_y) and not (x2 == pointC_x and y2 == pointC_y):
+            if intersects_line_segment(pointA[0], pointA[1], pointC_x, pointC_y, x1, y1, x2, y2):
+                return float('inf')  # Penalize heavily if the line segment AC intersects with the coastline
+
+    # Check if the line segment CB intersects with the coastline except at point C
+    for i in range(len(coastline_points) - 1):
+        x1, y1 = coastline_points[i]
+        x2, y2 = coastline_points[i + 1]
+        if not (x1 == pointC_x and y1 == pointC_y) and not (x2 == pointC_x and y2 == pointC_y):
+            if intersects_line_segment(pointC_x, pointC_y, pointB[0], pointB[1], x1, y1, x2, y2):
+                return float('inf')  # Penalize heavily if the line segment CB intersects with the coastline
+
+    return distance_AC + distance_CB
+
+
+# Rest of the code remains unchanged
+
+
+
+
+
+
+# Store the results of objective function evaluations
+objective_values = []
+min_objective_value = float('inf')
+min_pointC = None
+
+# Calculate objective function values for each spline point
+for x, y in coastline_points:
+    objective_value = objective_function(x, y)
+    objective_values.append(objective_value)
+
+    # Check if this point gives a new minimum objective value
+    if objective_value < min_objective_value:
+        min_objective_value = objective_value
+        min_pointC = (x, y)
+
+
+print(objective_values)
+# Print the smallest value obtained
+print("Smallest value from objective function:", min_objective_value)
+print("Point C corresponding to the smallest value:", min_pointC)
+
+# Define the point C
+pointC = min_pointC  # Using the previously calculated min_pointC
+
+def find_optimal_point_C():
+    """
+    Find an optimal point C that minimizes the total distance traveled.
+    """
+    min_total_distance = float('inf')
+    optimal_pointC = None
+
+    # Define waypoints along the coastline
+    waypoints = coastline_points[::1]  # Adjust the step size as needed
+
+    # Calculate distance for each waypoint
+    for pointC_x, pointC_y in waypoints:
+        # Calculate distance from A to C to B
+        distance_AC = np.sqrt((pointA[0] - pointC_x)**2 + (pointA[1] - pointC_y)**2)
+        distance_CB = np.sqrt((pointC_x - pointB[0])**2 + (pointC_y - pointB[1])**2)
+        total_distance = distance_AC + distance_CB
+
+        # Check if this total distance is the minimum so far
+        if total_distance < min_total_distance:
+            min_total_distance = total_distance
+            optimal_pointC = (pointC_x, pointC_y)
+
+    return optimal_pointC
+
+# Find optimal point C
+optimal_pointC = find_optimal_point_C()
+
+# Print the optimal point C
+print("Optimal point C:", optimal_pointC)
+
+# Rest of the code remains unchanged...
+
+# Plotting
+plt.figure(figsize=(10, 6))
+plt.plot(x_coastline, y_coastline, 'k-', label='Shoreline')
+plt.plot([pointA[0], pointC[0]], [pointA[1], pointC[1]], 'r--', label='Ship A to C')
+plt.plot([pointC[0], pointB[0]], [pointC[1], pointB[1]], 'b--', label='Ship C to B')
+plt.plot(pointA[0], pointA[1], 'ro', label='Ship A')
+plt.plot(pointB[0], pointB[1], 'bo', label='Ship B')
+
+# Customizing the plot
+plt.xlabel('Distance (along shoreline)', fontsize=18)  # Increase font size
+plt.ylabel('Distance (from shoreline)', fontsize=18)  # Increase font size
+
+# Plot the optimal point C
+plt.plot(optimal_pointC[0], optimal_pointC[1], 'go', label='Optimal Point C')
+
+# Set grid
+plt.grid(True)
+
+# Increase legend font size
+plt.legend(prop={'size': 13})  # Increase font size
+plt.show()
