@@ -1,0 +1,97 @@
+#All possible C
+import numpy as np
+import matplotlib.pyplot as plt
+
+def midpoint_displacement(x1, y1, x2, y2, roughness, iterations):
+    """
+    Generate points along a fractal coastline using midpoint displacement algorithm.
+    """
+    points = [(x1, y1), (x2, y2)]
+    for _ in range(iterations):
+        new_points = []
+        for i in range(len(points) - 1):
+            x_mid = (points[i][0] + points[i + 1][0]) / 2
+            y_mid = (points[i][1] + points[i + 1][1]) / 2
+            displacement = (np.random.random() - 0.5) * roughness * (points[i + 1][0] - points[i][0])
+            new_points.append((points[i][0], points[i][1]))
+            new_points.append((x_mid, y_mid + displacement))
+        new_points.append((points[-1][0], points[-1][1]))
+        points = new_points
+    return points
+
+# variables
+S_A = 6  # Distance of ship A from shore
+S_B = 18  # Distance of ship B from shore
+xstar = 30  # Distance of ship A to B
+shore_depth = -5
+horizontal_shore_length = np.sqrt(xstar**2 - (S_B - S_A)**2)  # Shore length
+
+# Define parameters for fractal coastline generation
+roughness = 1.0
+iterations = 6  # Number of points on the shore
+
+# Generate coastline points
+coastline_points = midpoint_displacement(0, 0, horizontal_shore_length, 0, roughness, iterations)
+x_coastline, y_coastline = zip(*coastline_points)
+
+# Define A and B points
+pointA = (0, S_A)  # A is 6 units away from the shore
+pointB = (horizontal_shore_length, S_B)  # B is 18 units away from the shore
+
+def objective_function(pointC_x, pointC_y):
+    """
+    Objective function to minimize the total distance traveled.
+    """
+    distance_AC = np.sqrt((pointA[0] - pointC_x)**2 + (pointA[1] - pointC_y)**2)
+    distance_CB = np.sqrt((pointC_x - pointB[0])**2 + (pointC_y - pointB[1])**2)
+    return distance_AC + distance_CB
+
+# Store the results of objective function evaluations
+objective_values = []
+min_objective_value = float('inf')
+min_pointC = None
+
+# Calculate objective function values for each spline point
+for x, y in coastline_points:
+    objective_value = objective_function(x, y)
+    objective_values.append(objective_value)
+
+    # Check if this point gives a new minimum objective value
+    if objective_value < min_objective_value:
+        min_objective_value = objective_value
+        min_pointC = (x, y)
+
+print(range(len(objective_values)))
+# Print the smallest value obtained
+print("Smallest value from objective function:", min_objective_value)
+print("Point C corresponding to the smallest value:", min_pointC)
+
+# Define the point C
+pointC = min_pointC  # Using the previously calculated min_pointC
+
+# Plotting
+plt.figure(figsize=(10, 6))
+plt.plot(x_coastline, y_coastline, 'k-', label='Shoreline')
+plt.plot(pointA[0], pointA[1], 'ro', label='Ship A')
+plt.plot(pointB[0], pointB[1], 'bo', label='Ship B')
+
+# Plot lines from all points on the coastline to A and B
+for x, y in coastline_points:
+    plt.plot([pointA[0], x], [pointA[1], y], 'r--', alpha=0.3)
+    plt.plot([x, pointB[0]], [y, pointB[1]], 'b--', alpha=0.3)
+
+if min_pointC is not None:
+    plt.plot(min_pointC[0], min_pointC[1], 'go', label='Point C')
+
+
+plt.xlabel('Distance (along shoreline)')
+plt.ylabel('Distance (from shoreline)')
+plt.title('Ship Positions and Shoreline')
+plt.legend()
+plt.grid(True)
+
+# Set x-axis and y-axis limits to fit only the shoreline
+# plt.xlim(0, horizontal_shore_length)
+# plt.ylim(shore_depth, max(S_A, S_B) + 5)
+
+plt.show()
